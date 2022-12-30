@@ -76,9 +76,12 @@ namespace BSPool
 
         return { new (&m_pool[m_stack[m_stackTop - 1] * sizeof(T)]) T{ std::forward<Args>(args)... }, [this](T* obj)
             {
+                // NOTE: The pool's lifetime must exceed that of its objects, 
+                // otherwise it'll lead to undefined behavior
+
                 std::lock_guard lock{ m_mutex };
 
-                std::size_t idx = obj - reinterpret_cast<T*>(m_pool.data());
+                std::size_t idx{ obj - reinterpret_cast<T*>(m_pool.data()) };
 
                 --m_stackTop;
                 m_stack[m_stackTop] = idx;
@@ -89,6 +92,9 @@ namespace BSPool
     template <typename T, std::size_t CAPACITY>
     ByteSmartObjectPool<T, CAPACITY>::~ByteSmartObjectPool() noexcept
     {
+        // if the pool's destructor was called then all of its objects have been released
+        // and no new objects would be requested
+
         for (; m_maxObjsUsed != s_infinity && m_maxObjsUsed >= 0U; --m_maxObjsUsed)
         {
             T& obj = reinterpret_cast<T&>(m_pool[m_maxObjsUsed * sizeof(T)]);
