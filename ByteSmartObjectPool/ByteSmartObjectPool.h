@@ -81,10 +81,10 @@ namespace BSPool
 
                 std::lock_guard lock{ m_mutex };
 
-                std::size_t idx{ obj - reinterpret_cast<T*>(m_pool.data()) };
+                std::size_t freedObjIdx{ static_cast<std::size_t>(obj - reinterpret_cast<T*>(m_pool.data())) };
 
                 --m_stackTop;
-                m_stack[m_stackTop] = idx;
+                m_stack[m_stackTop] = freedObjIdx;
             }
         };
     }
@@ -95,7 +95,7 @@ namespace BSPool
         // if the pool's destructor was called then all of its objects have been released
         // and no new objects would be requested
 
-        for (; m_maxObjsUsed != s_infinity && m_maxObjsUsed >= 0U; --m_maxObjsUsed)
+        for ( ; m_maxObjsUsed != s_infinity && m_maxObjsUsed >= 0U; --m_maxObjsUsed)
         {
             T& obj = reinterpret_cast<T&>(m_pool[m_maxObjsUsed * sizeof(T)]);
             obj.~T();
