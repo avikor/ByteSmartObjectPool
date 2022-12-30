@@ -41,6 +41,7 @@ namespace BSPool
         std::array<std::size_t, CAPACITY> m_stack;
         std::size_t m_stackTop;
         std::size_t m_maxObjsUsed;
+        std::mutex m_mutex;
     };
 
 
@@ -50,6 +51,7 @@ namespace BSPool
         , m_stack{}
         , m_stackTop{ 0U }
         , m_maxObjsUsed{ 0U }
+        , m_mutex{}
     {
         for (std::size_t i = 0; i < CAPACITY; ++i)
         {
@@ -61,6 +63,8 @@ namespace BSPool
     template <typename... Args>
     PoolItem<T> ByteSmartObjectPool<T, CAPACITY>::request(Args&&... args) noexcept(false)
     {
+        std::lock_guard lock{ m_mutex };
+
         if (m_stackTop == CAPACITY)
         {
             throw max_capacity_exception{};
@@ -72,6 +76,8 @@ namespace BSPool
 
         return { new (&m_pool[m_stack[m_stackTop - 1] * sizeof(T)]) T{ std::forward<Args>(args)... }, [this](T* obj)
             {
+                std::lock_guard lock{ m_mutex };
+
                 std::size_t idx = obj - reinterpret_cast<T*>(m_pool.data());
 
                 --m_stackTop;
