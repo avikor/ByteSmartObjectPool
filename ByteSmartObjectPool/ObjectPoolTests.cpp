@@ -1,7 +1,7 @@
 ﻿#define CATCH_CONFIG_MAIN
 #include "catch.hpp"
 
-#include "ByteSmartObjectPool.h"
+#include "ByteSmartObjectPool.hpp"
 
 
 struct TrivialSturct
