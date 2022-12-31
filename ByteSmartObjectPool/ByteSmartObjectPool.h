@@ -29,10 +29,16 @@ namespace BSPool
     public:
         ByteSmartObjectPool() noexcept;
 
+        ~ByteSmartObjectPool() noexcept;
+
         template <typename... Args>
         [[nodiscard]] PoolItem<T> request(Args&&... args) noexcept(false);
 
-        ~ByteSmartObjectPool() noexcept;
+        [[nodiscard]] consteval std::size_t capacity() const noexcept;
+
+        [[nodiscard]] std::size_t size() const noexcept;
+        
+        [[nodiscard]] bool isFull() const noexcept;
 
     private:
         static constexpr std::size_t s_infinity{ std::numeric_limits<std::size_t>::max() }; // signifies a wrap around
@@ -40,6 +46,7 @@ namespace BSPool
         std::array<std::byte, sizeof(T) * CAPACITY> m_pool;
         std::array<std::size_t, CAPACITY> m_stack;
         std::size_t m_stackTop;
+        std::size_t m_size;
         std::size_t m_maxObjsUsed;
         std::mutex m_mutex;
     };
@@ -50,12 +57,26 @@ namespace BSPool
         : m_pool{}
         , m_stack{}
         , m_stackTop{ 0U }
+        , m_size{ 0U }
         , m_maxObjsUsed{ 0U }
         , m_mutex{}
     {
         for (std::size_t i = 0; i < CAPACITY; ++i)
         {
             m_stack[i] = i;
+        }
+    }
+
+    template <typename T, std::size_t CAPACITY>
+    ByteSmartObjectPool<T, CAPACITY>::~ByteSmartObjectPool() noexcept
+    {
+        // if the pool's destructor was called then all of its objects have been released
+        // and no new objects would be requested
+
+        for (; m_maxObjsUsed != s_infinity && m_maxObjsUsed >= 0U; --m_maxObjsUsed)
+        {
+            T& obj = reinterpret_cast<T&>(m_pool[m_maxObjsUsed * sizeof(T)]);
+            obj.~T();
         }
     }
 
@@ -74,6 +95,8 @@ namespace BSPool
 
         ++m_stackTop;
 
+        ++m_size;
+
         return { new (&m_pool[m_stack[m_stackTop - 1] * sizeof(T)]) T{ std::forward<Args>(args)... }, [this](T* obj)
             {
                 // NOTE: The pool's lifetime must exceed that of its objects, 
@@ -85,21 +108,28 @@ namespace BSPool
 
                 --m_stackTop;
                 m_stack[m_stackTop] = freedObjIdx;
+
+                --m_size;
             }
         };
     }
 
     template <typename T, std::size_t CAPACITY>
-    ByteSmartObjectPool<T, CAPACITY>::~ByteSmartObjectPool() noexcept
+    consteval std::size_t ByteSmartObjectPool<T, CAPACITY>::capacity() const noexcept
     {
-        // if the pool's destructor was called then all of its objects have been released
-        // and no new objects would be requested
+        return CAPACITY;
+    }
 
-        for ( ; m_maxObjsUsed != s_infinity && m_maxObjsUsed >= 0U; --m_maxObjsUsed)
-        {
-            T& obj = reinterpret_cast<T&>(m_pool[m_maxObjsUsed * sizeof(T)]);
-            obj.~T();
-        }
+    template <typename T, std::size_t CAPACITY>
+    std::size_t ByteSmartObjectPool<T, CAPACITY>::size() const noexcept
+    {
+        return m_size;
+    }
+
+    template <typename T, std::size_t CAPACITY>
+    bool ByteSmartObjectPool<T, CAPACITY>::isFull() const noexcept
+    {
+        return m_size == CAPACITY;
     }
 }
 
