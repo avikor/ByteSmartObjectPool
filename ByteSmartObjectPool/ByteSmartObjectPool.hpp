@@ -61,7 +61,7 @@ namespace BSPool
         , m_maxObjsUsed{ 0U }
         , m_mutex{}
     {
-        for (std::size_t i = 0; i < CAPACITY; ++i)
+        for (std::size_t i{ 0U }; i < CAPACITY; ++i)
         {
             m_stack[i] = i;
         }
