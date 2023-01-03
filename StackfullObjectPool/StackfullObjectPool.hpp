@@ -33,8 +33,6 @@ namespace sop
     public:
         StackfullObjectPool() noexcept;
 
-        ~StackfullObjectPool() noexcept;
-
         template <typename... Args>
         [[nodiscard]] PoolItem<T> request(Args&&... args) noexcept(false);
 
@@ -51,7 +49,6 @@ namespace sop
         std::array<std::size_t, CAPACITY> stack_;
         std::size_t stackTop_;
         std::size_t size_;
-        std::size_t maxObjsUsed_;
         std::mutex mutex_;
     };
 
@@ -62,25 +59,11 @@ namespace sop
         , stack_{}
         , stackTop_{ 0U }
         , size_{ 0U }
-        , maxObjsUsed_{ 0U }
         , mutex_{}
     {
         for (std::size_t i{ 0U }; i != CAPACITY; ++i)
         {
             stack_[i] = i;
-        }
-    }
-
-    template <PoolItemType T, std::size_t CAPACITY>
-    StackfullObjectPool<T, CAPACITY>::~StackfullObjectPool() noexcept
-    {
-        // if the pool's destructor was called then all of its objects have been released
-        // and no new objects would be requested
-
-        for (; maxObjsUsed_ != StackfullObjectPool::infinity_s; --maxObjsUsed_)
-        {
-            T& obj = reinterpret_cast<T&>(pool_[maxObjsUsed_ * sizeof(T)]);
-            obj.~T();
         }
     }
 
@@ -95,8 +78,6 @@ namespace sop
             throw max_capacity_exception{};
         }
 
-        maxObjsUsed_ = std::max(maxObjsUsed_, stackTop_);
-
         ++stackTop_;
 
         ++size_;
@@ -108,8 +89,6 @@ namespace sop
 
                 std::lock_guard lock{ mutex_ };
                 
-                obj->~T();
-
                 std::size_t freedObjIdx{ static_cast<std::size_t>(obj - reinterpret_cast<T*>(pool_.data())) };
 
                 --stackTop_;
