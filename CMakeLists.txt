@@ -1,5 +1,5 @@
 ﻿cmake_minimum_required (VERSION 3.8)
 
-project ("ByteSmartObjectPool")
+project ("StackfullObjectPool")
 
-add_subdirectory ("ByteSmartObjectPool")
+add_subdirectory ("StackfullObjectPool")
