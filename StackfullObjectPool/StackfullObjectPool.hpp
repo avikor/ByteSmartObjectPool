@@ -43,8 +43,6 @@ namespace sop
         [[nodiscard]] bool isFull() const noexcept;
 
     private:
-        static constexpr std::size_t infinity_s{ std::numeric_limits<std::size_t>::max() }; // signifies a wrap around
-
         std::array<std::byte, sizeof(T) * CAPACITY> pool_;
         std::array<std::size_t, CAPACITY> stack_;
         std::size_t stackTop_;
