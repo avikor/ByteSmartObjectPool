@@ -71,7 +71,7 @@ namespace sop
     {
         std::lock_guard lock{ mutex_ };
 
-        if (stackTop_ == CAPACITY)
+        if (stackTop_ == CAPACITY) [[unlikely]]
         {
             throw max_capacity_exception{};
         }
@@ -87,7 +87,7 @@ namespace sop
 
                 std::lock_guard lock{ mutex_ };
                 
-                std::size_t freedObjIdx{ static_cast<std::size_t>(obj - reinterpret_cast<T*>(pool_.data())) };
+                const std::size_t freedObjIdx{ static_cast<std::size_t>(obj - reinterpret_cast<T*>(pool_.data())) };
 
                 --stackTop_;
                 stack_[stackTop_] = freedObjIdx;
