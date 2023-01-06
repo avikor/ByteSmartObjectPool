@@ -20,7 +20,7 @@ namespace sop
     class max_capacity_exception : public std::bad_alloc
     {
     public:
-        char const* what() const override
+        char const* what() const throw() override
         {
             return "object pool reached max capacity.";
         }
