@@ -44,6 +44,7 @@ namespace sop
 
     private:
         std::array<std::byte, sizeof(T) * CAPACITY> pool_;
+        T* poolStart_;
         std::array<std::size_t, CAPACITY> stack_;
         std::size_t stackTop_;
         std::size_t size_;
@@ -54,6 +55,7 @@ namespace sop
     template <PoolItemType T, std::size_t CAPACITY>
     StackfullObjectPool<T, CAPACITY>::StackfullObjectPool() noexcept
         : pool_{}
+        , poolStart_{ reinterpret_cast<T*>(pool_.data()) }
         , stack_{}
         , stackTop_{ 0U }
         , size_{ 0U }
@@ -87,7 +89,7 @@ namespace sop
 
                 std::lock_guard lock{ mutex_ };
                 
-                const std::size_t freedObjIdx{ static_cast<std::size_t>(obj - reinterpret_cast<T*>(pool_.data())) };
+                const std::size_t freedObjIdx{ static_cast<std::size_t>(obj - poolStart_) };
 
                 --stackTop_;
                 stack_[stackTop_] = freedObjIdx;
