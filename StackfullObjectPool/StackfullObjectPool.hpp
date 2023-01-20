@@ -5,15 +5,16 @@
 #include <array>
 #include <memory>
 #include <functional>
+#include <mutex>
 
 
 namespace sop
 {
     template <typename T>
-    concept PoolItemType = std::is_trivially_copyable_v<T>;
+    concept PoolItemConcept = std::is_trivially_copyable_v<T>;
 
 
-    template <PoolItemType T>
+    template <PoolItemConcept T>
     using PoolItem = std::unique_ptr<T, std::function<void(T*)>>;
 
 
@@ -27,7 +28,7 @@ namespace sop
     };
 
 
-    template <PoolItemType T, std::size_t CAPACITY>
+    template <PoolItemConcept T, std::size_t CAPACITY>
     class StackfullObjectPool
     {
     public:
@@ -44,7 +45,7 @@ namespace sop
 
     private:
         std::array<std::byte, sizeof(T) * CAPACITY> pool_;
-        T* poolStart_;
+        T* const poolStart_;
         std::array<std::size_t, CAPACITY> stack_;
         std::size_t stackTop_;
         std::size_t size_;
@@ -52,10 +53,10 @@ namespace sop
     };
 
 
-    template <PoolItemType T, std::size_t CAPACITY>
+    template <PoolItemConcept T, std::size_t CAPACITY>
     StackfullObjectPool<T, CAPACITY>::StackfullObjectPool() noexcept
         : pool_{}
-        , poolStart_{ reinterpret_cast<T*>(pool_.data()) }
+        , poolStart_{ reinterpret_cast<T* const>(pool_.data()) }
         , stack_{}
         , stackTop_{ 0U }
         , size_{ 0U }
@@ -67,7 +68,7 @@ namespace sop
         }
     }
 
-    template <PoolItemType T, std::size_t CAPACITY>
+    template <PoolItemConcept T, std::size_t CAPACITY>
     template <typename... Args>
     PoolItem<T> StackfullObjectPool<T, CAPACITY>::request(Args&&... args) noexcept(false)
     {
@@ -99,19 +100,19 @@ namespace sop
         };
     }
 
-    template <PoolItemType T, std::size_t CAPACITY>
+    template <PoolItemConcept T, std::size_t CAPACITY>
     consteval std::size_t StackfullObjectPool<T, CAPACITY>::capacity() const noexcept
     {
         return CAPACITY;
     }
 
-    template <PoolItemType T, std::size_t CAPACITY>
+    template <PoolItemConcept T, std::size_t CAPACITY>
     std::size_t StackfullObjectPool<T, CAPACITY>::size() const noexcept
     {
         return size_;
     }
 
-    template <PoolItemType T, std::size_t CAPACITY>
+    template <PoolItemConcept T, std::size_t CAPACITY>
     bool StackfullObjectPool<T, CAPACITY>::isFull() const noexcept
     {
         return size_ == CAPACITY;

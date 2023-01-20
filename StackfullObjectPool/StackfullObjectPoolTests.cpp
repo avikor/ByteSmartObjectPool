@@ -1,7 +1,7 @@
-﻿#define CATCH_CONFIG_MAIN
-#include "catch.hpp"
+﻿#include "StackfullObjectPool.hpp"
 
-#include "StackfullObjectPool.hpp"
+#define CATCH_CONFIG_MAIN
+#include "catch.hpp"
 
 
 struct TrivialSturct
