@@ -20,11 +20,11 @@ namespace sop
     class PoolItemDeleter
     {
     public:
-        PoolItemDeleter(StackfullObjectPool<T, CAPACITY>& objectPool)
+        constexpr PoolItemDeleter(StackfullObjectPool<T, CAPACITY>& objectPool)
             : objectPool_{ objectPool }
         { }
 
-        void operator()(T* obj) const
+        constexpr void operator()(T* obj) const
         {
             objectPool_.release(obj);
         }
@@ -51,7 +51,7 @@ namespace sop
     class StackfullObjectPool
     {
     public:
-        StackfullObjectPool() noexcept;
+        constexpr StackfullObjectPool() noexcept;
 
         template <typename... Args>
         [[nodiscard]] constexpr PoolItem<T, CAPACITY> request(Args&&... args) noexcept(false);
@@ -78,7 +78,7 @@ namespace sop
 
 
     template <PoolItemConcept T, std::size_t CAPACITY>
-    StackfullObjectPool<T, CAPACITY>::StackfullObjectPool() noexcept
+    constexpr StackfullObjectPool<T, CAPACITY>::StackfullObjectPool() noexcept
         : pool_{}
         , poolStart_{ reinterpret_cast<T* const>(pool_.data()) }
         , stack_{}
