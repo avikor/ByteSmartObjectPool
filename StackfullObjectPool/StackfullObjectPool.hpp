@@ -73,7 +73,7 @@ namespace sop
         std::mutex mutex_;
         const PoolItemDeleter<T, CAPACITY> poolItemDeleter_;
 
-        void release(T* obj) noexcept;
+        constexpr void release(T* obj) noexcept;
     };
 
 
@@ -112,7 +112,7 @@ namespace sop
     }
 
     template <PoolItemConcept T, std::size_t CAPACITY>
-    void StackfullObjectPool<T, CAPACITY>::release(T* obj) noexcept
+    constexpr void StackfullObjectPool<T, CAPACITY>::release(T* obj) noexcept
     {
         // NOTE: The pool's lifetime must exceed that of its objects, 
         // otherwise it'll lead to undefined behavior
