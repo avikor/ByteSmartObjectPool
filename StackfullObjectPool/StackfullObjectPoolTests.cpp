@@ -20,7 +20,7 @@ TEST_CASE("simple int pool", "[StackfullObjectPool]")
 	REQUIRE(intPool.size() == 0U);
 	REQUIRE(!intPool.isFull());
 
-	sop::PoolItem<int> pInt1 = intPool.request(1);
+	sop::PoolItem<int, 2U> pInt1 = intPool.request(1);
 	
 	REQUIRE(intPool.capacity() == 2U);
 	REQUIRE(intPool.size() == 1U);
@@ -60,7 +60,7 @@ TEST_CASE("trivial struct pool", "[StackfullObjectPool]")
 	REQUIRE(trivialSturctPool.size() == 0U);
 	REQUIRE(!trivialSturctPool.isFull());
 
-	sop::PoolItem<TrivialSturct> trivial1 = trivialSturctPool.request(1, 2.5f, 3.3);
+	sop::PoolItem<TrivialSturct, 2U> trivial1 = trivialSturctPool.request(1, 2.5f, 3.3);
 
 	REQUIRE(trivialSturctPool.capacity() == 2U);
 	REQUIRE(trivialSturctPool.size() == 1U);

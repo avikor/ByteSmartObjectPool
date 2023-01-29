@@ -4,7 +4,6 @@
 
 #include <array>
 #include <memory>
-#include <functional>
 #include <mutex>
 
 
@@ -14,8 +13,28 @@ namespace sop
     concept PoolItemConcept = std::is_trivially_copyable_v<T>;
 
 
-    template <PoolItemConcept T>
-    using PoolItem = std::unique_ptr<T, std::function<void(T*)>>;
+    template <PoolItemConcept T, std::size_t CAPACITY>
+    class StackfullObjectPool;
+
+    template <PoolItemConcept T, std::size_t CAPACITY>
+    class PoolItemDeleter
+    {
+    public:
+        PoolItemDeleter(StackfullObjectPool<T, CAPACITY>& objectPool)
+            : objectPool_{ objectPool }
+        { }
+
+        void operator()(T* obj) const
+        {
+            objectPool_.release(obj);
+        }
+
+    private:
+        StackfullObjectPool<T, CAPACITY>& objectPool_;
+    };
+
+    template <PoolItemConcept T, std::size_t CAPACITY>
+    using PoolItem = std::unique_ptr<T, const PoolItemDeleter<T, CAPACITY>&>;
 
 
     class max_capacity_exception : public std::bad_alloc
@@ -35,21 +54,26 @@ namespace sop
         StackfullObjectPool() noexcept;
 
         template <typename... Args>
-        [[nodiscard]] PoolItem<T> request(Args&&... args) noexcept(false);
+        [[nodiscard]] constexpr PoolItem<T, CAPACITY> request(Args&&... args) noexcept(false);
 
         [[nodiscard]] consteval std::size_t capacity() const noexcept;
 
-        [[nodiscard]] std::size_t size() const noexcept;
+        [[nodiscard]] constexpr std::size_t size() const noexcept;
         
-        [[nodiscard]] bool isFull() const noexcept;
+        [[nodiscard]] constexpr bool isFull() const noexcept;
 
     private:
+        friend class PoolItemDeleter<T, CAPACITY>;
+
         std::array<std::byte, sizeof(T) * CAPACITY> pool_;
         T* const poolStart_;
         std::array<std::size_t, CAPACITY> stack_;
         std::size_t stackTop_;
         std::size_t size_;
         std::mutex mutex_;
+        const PoolItemDeleter<T, CAPACITY> poolItemDeleter_;
+
+        void release(T* obj) noexcept;
     };
 
 
@@ -61,6 +85,7 @@ namespace sop
         , stackTop_{ 0U }
         , size_{ 0U }
         , mutex_{}
+        , poolItemDeleter_{ *this }
     {
         for (std::size_t i{ 0U }; i != CAPACITY; ++i)
         {
@@ -70,7 +95,7 @@ namespace sop
 
     template <PoolItemConcept T, std::size_t CAPACITY>
     template <typename... Args>
-    PoolItem<T> StackfullObjectPool<T, CAPACITY>::request(Args&&... args) noexcept(false)
+    constexpr PoolItem<T, CAPACITY> StackfullObjectPool<T, CAPACITY>::request(Args&&... args) noexcept(false)
     {
         std::lock_guard lock{ mutex_ };
 
@@ -83,21 +108,23 @@ namespace sop
 
         ++size_;
 
-        return { new (&pool_[stack_[stackTop_ - 1U] * sizeof(T)]) T{ std::forward<Args>(args)... }, [this](T* obj)
-            {
-                // NOTE: The pool's lifetime must exceed that of its objects, 
-                // otherwise it'll lead to undefined behavior
+        return { new (&pool_[stack_[stackTop_ - 1U] * sizeof(T)]) T{ std::forward<Args>(args)... }, poolItemDeleter_ };
+    }
 
-                std::lock_guard lock{ mutex_ };
-                
-                const std::size_t freedObjIdx{ static_cast<std::size_t>(obj - poolStart_) };
+    template <PoolItemConcept T, std::size_t CAPACITY>
+    void StackfullObjectPool<T, CAPACITY>::release(T* obj) noexcept
+    {
+        // NOTE: The pool's lifetime must exceed that of its objects, 
+        // otherwise it'll lead to undefined behavior
 
-                --stackTop_;
-                stack_[stackTop_] = freedObjIdx;
+        std::lock_guard lock{ mutex_ };
 
-                --size_;
-            }
-        };
+        const std::size_t freedObjIdx{ static_cast<std::size_t>(obj - poolStart_) };
+
+        --stackTop_;
+        stack_[stackTop_] = freedObjIdx;
+
+        --size_;
     }
 
     template <PoolItemConcept T, std::size_t CAPACITY>
@@ -107,13 +134,13 @@ namespace sop
     }
 
     template <PoolItemConcept T, std::size_t CAPACITY>
-    std::size_t StackfullObjectPool<T, CAPACITY>::size() const noexcept
+    constexpr std::size_t StackfullObjectPool<T, CAPACITY>::size() const noexcept
     {
         return size_;
     }
 
     template <PoolItemConcept T, std::size_t CAPACITY>
-    bool StackfullObjectPool<T, CAPACITY>::isFull() const noexcept
+    constexpr bool StackfullObjectPool<T, CAPACITY>::isFull() const noexcept
     {
         return size_ == CAPACITY;
     }
