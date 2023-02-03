@@ -20,22 +20,34 @@ namespace sop
     class PoolItemDeleter
     {
     public:
+        //constexpr PoolItemDeleter()
+        //    : objectPool_{ nullptr }
+        //{ }
+
         constexpr PoolItemDeleter(StackfullObjectPool<T, CAPACITY>& objectPool)
-            : objectPool_{ objectPool }
+            : objectPool_{ &objectPool }
         { }
 
         constexpr void operator()(T* obj) const
         {
-            objectPool_.release(obj);
+            // NOTE: The pool's lifetime must exceed that of its objects, 
+            // otherwise it'll lead to undefined behavior
+
+            objectPool_->release(obj);
         }
 
     private:
-        StackfullObjectPool<T, CAPACITY>& objectPool_;
+        StackfullObjectPool<T, CAPACITY>* objectPool_;
     };
 
     template <PoolItemConcept T, std::size_t CAPACITY>
     using PoolItem = std::unique_ptr<T, const PoolItemDeleter<T, CAPACITY>&>;
 
+    // NOTE: if you need a defualt ctor for PoolItem you can define
+    // using PoolItem = std::unique_ptr<T, PoolItemDeleter<T, CAPACITY>>;
+    // and uncomment PoolItem's default ctor
+    // but if you allow for that, you also allow for the following undefined behavior - 
+    // sop::PoolItem<int, 2U> pInt; *pInt = 17;
 
     class max_capacity_exception : public std::bad_alloc
     {
@@ -114,9 +126,6 @@ namespace sop
     template <PoolItemConcept T, std::size_t CAPACITY>
     constexpr void StackfullObjectPool<T, CAPACITY>::release(T* obj) noexcept
     {
-        // NOTE: The pool's lifetime must exceed that of its objects, 
-        // otherwise it'll lead to undefined behavior
-
         std::lock_guard lock{ mutex_ };
 
         const std::size_t freedObjIdx{ static_cast<std::size_t>(obj - poolStart_) };

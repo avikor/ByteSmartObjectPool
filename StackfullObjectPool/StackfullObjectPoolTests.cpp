@@ -47,9 +47,16 @@ TEST_CASE("simple int pool", "[StackfullObjectPool]")
 	auto pInt3 = intPool.request();
 	REQUIRE(*pInt3 == 0);
 
+	*pInt3 = 5;
+
 	REQUIRE(intPool.capacity() == 2U);
 	REQUIRE(intPool.size() == 2U);
 	REQUIRE(intPool.isFull());
+
+	sop::PoolItem<int, 2U> pInt4 = std::move(pInt3);
+
+	REQUIRE(*pInt4 == 5);
+	REQUIRE(!pInt3);
 }
 
 TEST_CASE("trivial struct pool", "[StackfullObjectPool]")
